@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">PownyNotify</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="OAUTH2_SECRET_EMPTY">Please provide a valid clientSecret in the OAuth2Credentials class</string>
+</resources>
