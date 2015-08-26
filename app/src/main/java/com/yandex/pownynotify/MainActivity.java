@@ -3,21 +3,31 @@ package com.yandex.pownynotify;
 import android.app.Activity;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 
 public class MainActivity extends Activity  implements EventTaskFragment.TaskCallbacks, SwipeRefreshLayout.OnRefreshListener {
+    private static final String TAG = "MainActivity";
     private static final String TAG_TASK_FRAGMENT = "powny_fragment";
+    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
     public static final int OAUTH_REQUEST = 1;
 
@@ -26,7 +36,7 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
     public ListView mList;
     public EventAdapter<Event> mEvAdapter;
 
-    public SharedPreferences mPref;
+    public BroadcastReceiver mEventsBroadcastReceiver;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -35,49 +45,49 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
 
         System.err.println("!!! MainActivity onCreate");
 
-        mPref = getSharedPreferences("PownyAppPref", MODE_PRIVATE);
-
-
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
         mSwipeView.setRefreshing(false);
         mSwipeView.setOnRefreshListener(this);
 
         ArrayList<Event> eventList = new ArrayList<>();
-
         mEvAdapter = new EventAdapter(this, R.layout.listview_item, eventList);
 
         mList = (ListView) findViewById(R.id.topList);
         mList.setAdapter(mEvAdapter);
 
-        GetEvents();
+        mEventsBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                GetEvents();
+            }
+        };
+        LocalBroadcastManager
+                .getInstance(this)
+                .registerReceiver(mEventsBroadcastReceiver, new IntentFilter("GetEvents"));
+
+        if (checkPlayServices()) {
+            Intent intent = new Intent(this, RegistrationIntentService.class);
+            startService(intent);
+        }
     }
 
-    public void GetEvents() {
-        System.err.println("!!! MainActivity GetEvents");
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Intent intent = new Intent("GetEvents");
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
 
-        FragmentManager fm = getFragmentManager();
-        EventTaskFragment mTaskFragment = (EventTaskFragment) fm.findFragmentByTag(TAG_TASK_FRAGMENT);
-
-        FragmentTransaction ft = fm.beginTransaction();
-
-        if (mTaskFragment != null) {
-            ft.remove(mTaskFragment);
-        }
-
-        Bundle args = new Bundle();
-        args.putString("OAuthToken",  mPref.getString("OAuthToken", ""));
-        args.putString("OAuthSecret", mPref.getString("OAuthSecret", ""));
-
-        mTaskFragment = new EventTaskFragment();
-        mTaskFragment.setArguments(args);
-
-        ft.add(mTaskFragment, TAG_TASK_FRAGMENT);
-        ft.commit();
+    @Override
+    protected void onPause() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mEventsBroadcastReceiver);
+        super.onPause();
     }
 
     @Override
     public void onRefresh() {
-        GetEvents();
+        Intent intent = new Intent("GetEvents");
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @Override
@@ -107,7 +117,8 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
         switch (requestCode) {
             case OAUTH_REQUEST:
                 if(resultCode == RESULT_OK) {
-                    GetEvents();
+                    Intent intent = new Intent("GetEvents");
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
                 }
                 break;
         }
@@ -160,5 +171,49 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
         }
 
         mEvAdapter.notifyDataSetChanged();
+    }
+
+    private void GetEvents() {
+        System.err.println("!!! MainActivity GetEvents");
+
+        SharedPreferences mPref = getSharedPreferences("PownyAppPref", MODE_PRIVATE);
+
+        FragmentManager fm = getFragmentManager();
+        EventTaskFragment mTaskFragment = (EventTaskFragment) fm.findFragmentByTag(TAG_TASK_FRAGMENT);
+
+        FragmentTransaction ft = fm.beginTransaction();
+
+        if (mTaskFragment != null) {
+            ft.remove(mTaskFragment);
+        }
+
+        Bundle args = new Bundle();
+        args.putString("OAuthToken", mPref.getString("OAuthToken", ""));
+        args.putString("OAuthSecret", mPref.getString("OAuthSecret", ""));
+
+        mTaskFragment = new EventTaskFragment();
+        mTaskFragment.setArguments(args);
+
+        ft.add(mTaskFragment, TAG_TASK_FRAGMENT);
+        ft.commit();
+    }
+
+    /**
+     * Check the device to make sure it has the Google Play Services APK. If
+     * it doesn't, display a dialog that allows users to download the APK from
+     * the Google Play Store or enable it in the device's system settings.
+     */
+    private boolean checkPlayServices() {
+        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
+                GooglePlayServicesUtil.getErrorDialog(resultCode, this, PLAY_SERVICES_RESOLUTION_REQUEST).show();
+            } else {
+                Log.i(TAG, "This device is not supported.");
+                finish();
+            }
+            return false;
+        }
+        return true;
     }
 }

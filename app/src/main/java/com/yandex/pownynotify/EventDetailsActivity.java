@@ -5,6 +5,7 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.webkit.WebChromeClient;
@@ -29,34 +30,43 @@ public class EventDetailsActivity extends Activity {
 
         System.out.println("!!! EventDetailsActivity");
 
-        ActionBar actionBar = getActionBar();
-        if (actionBar != null) {
-            actionBar.hide();
-        }
-
         Intent mIntent = getIntent();
         String eventId = mIntent.getStringExtra("eventid");
 
         DatabaseEvents db = new DatabaseEvents(getApplicationContext());
         Event ev = db.selectRecordById(eventId);
 
-        TextView eventTime = (TextView) findViewById(R.id.EventDetailsTime);
-        TextView subject   = (TextView) findViewById(R.id.EventDetailsSubject);
-        TextView severity  = (TextView) findViewById(R.id.EventDetailsSeverity);
+        ActionBar actionBar = getActionBar();
+        if (actionBar != null) {
+            //actionBar.hide();
+            LayoutInflater mInflater = LayoutInflater.from(this);
+            View mCustomView = mInflater.inflate(R.layout.eventdetails_actionbar, null);
 
-        eventTime.setText(ev.getTime().toString());
-        subject.setText(ev.getSubject());
+            TextView eventTime = (TextView) mCustomView.findViewById(R.id.EventDetailsTime);
+            TextView subject   = (TextView) mCustomView.findViewById(R.id.EventDetailsSubject);
+            TextView severity  = (TextView) mCustomView.findViewById(R.id.EventDetailsSeverity);
 
-        switch (ev.getSeverity()) {
-            case "CRIT":
-                severity.setBackgroundResource(R.color.danger);
-                break;
-            case "WARN":
-                severity.setBackgroundResource(R.color.warning);
-                break;
-            case "OK":
-                severity.setBackgroundResource(R.color.success);
-                break;
+            eventTime.setText(ev.getTime().toString());
+            subject.setText(ev.getSubject());
+
+            switch (ev.getSeverity()) {
+                case "CRIT":
+                    severity.setBackgroundResource(R.color.danger);
+                    break;
+                case "WARN":
+                    severity.setBackgroundResource(R.color.warning);
+                    break;
+                case "OK":
+                    severity.setBackgroundResource(R.color.success);
+                    break;
+            }
+
+            actionBar.setCustomView(mCustomView);
+
+            actionBar.setDisplayShowCustomEnabled(true);
+            actionBar.setDisplayShowHomeEnabled(false);
+            actionBar.setDisplayShowTitleEnabled(false);
+
         }
 
         final ProgressBar progress = (ProgressBar) findViewById(R.id.progressBar);

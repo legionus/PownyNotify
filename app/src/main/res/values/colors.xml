@@ -4,4 +4,7 @@
     <color name="warning">#EB9316</color>
     <color name="info">#2AABD2</color>
     <color name="success">#419641</color>
+    <color name="disable">#b2b2b2</color>
+    <color name="text_shadow">#7F000000</color>
+    <color name="text_shadow_white">#FFFFFF</color>
 </resources>
