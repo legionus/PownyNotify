@@ -2,6 +2,7 @@ package com.yandex.pownynotify;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.ContextMenu;
@@ -16,17 +17,22 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 public class EventGroupActivity extends Activity {
+    Context mContext;
+    ArrayList<Event> eventList;
+
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.eventgroup);
 
         System.out.println("!!! EventGroupActivity");
 
+        mContext = this;
+
         Intent mIntent = getIntent();
         String group = mIntent.getStringExtra("group");
 
         DatabaseEvents db = new DatabaseEvents(this);
-        ArrayList<Event> eventList = db.selectRecordsByGroup(group);
+        eventList = db.selectRecordsByGroup(group);
 
         ActionBar actionBar = getActionBar();
         if (actionBar != null) {
@@ -47,6 +53,17 @@ public class EventGroupActivity extends Activity {
 
         ListView list = (ListView) findViewById(R.id.groupList);
         list.setAdapter(mEvAdapter);
+        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final Event event = eventList.get(position);
+
+                Intent intent = new Intent(mContext, EventDetailsActivity.class);
+                intent.putExtra("eventid", event.getId());
+
+                mContext.startActivity(intent);
+            }
+        });
 
         registerForContextMenu(list);
     }
@@ -56,11 +73,7 @@ public class EventGroupActivity extends Activity {
         super.onCreateContextMenu(menu, v, menuInfo);
 
         System.out.println("!!! EventGroupActivity onCreateContextMenu");
-/*
-        if (v.getId() != R.id.groupList) {
-            return;
-        }
-*/
+
         //AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
         //menu.setHeaderTitle(Countries[info.position]);
         String[] menuItems = getResources().getStringArray(R.array.event_actions_menu);

@@ -12,9 +12,11 @@ import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -33,6 +35,7 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
 
     public SwipeRefreshLayout mSwipeView;
 
+    public Context mContext;
     public ListView mList;
     public EventAdapter<Event> mEvAdapter;
 
@@ -45,15 +48,35 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
 
         System.err.println("!!! MainActivity onCreate");
 
+        mContext = this;
+
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
         mSwipeView.setRefreshing(false);
         mSwipeView.setOnRefreshListener(this);
 
-        ArrayList<Event> eventList = new ArrayList<>();
+        final ArrayList<Event> eventList = new ArrayList<>();
         mEvAdapter = new EventAdapter(this, R.layout.listview_item, eventList);
 
         mList = (ListView) findViewById(R.id.topList);
         mList.setAdapter(mEvAdapter);
+        mList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                final Event event = eventList.get(position);
+
+                if (event.getCount() == 1) {
+                    Intent intent = new Intent(mContext, EventDetailsActivity.class);
+                    intent.putExtra("eventid", event.getId());
+                    mContext.startActivity(intent);
+                } else {
+                    Intent intent = new Intent(mContext, EventGroupActivity.class);
+                    intent.putExtra("group", event.getSubject());
+                    mContext.startActivity(intent);
+                }
+            }
+        });
+
+        registerForContextMenu(mList);
 
         mEventsBroadcastReceiver = new BroadcastReceiver() {
             @Override
@@ -171,6 +194,24 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
         }
 
         mEvAdapter.notifyDataSetChanged();
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+
+        System.out.println("!!! MainActivity onCreateContextMenu");
+
+        String[] menuItems = getResources().getStringArray(R.array.event_actions_menu);
+
+        for (int i = 0; i < menuItems.length; i++) {
+            menu.add(Menu.NONE, i, i, menuItems[i]);
+        }
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        return true;
     }
 
     private void GetEvents() {

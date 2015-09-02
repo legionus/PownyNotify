@@ -56,15 +56,6 @@ public class EventGroupAdapter<T> extends ArrayAdapter<T> {
                 severity.setBackgroundResource(R.color.success);
                 break;
         }
-
-        vi.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(mContext, EventDetailsActivity.class);
-                intent.putExtra("eventid", event.getId());
-                mContext.startActivity(intent);
-            }
-        });
         return vi;
     }
 }

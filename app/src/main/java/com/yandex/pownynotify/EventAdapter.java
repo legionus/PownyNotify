@@ -59,27 +59,6 @@ public class EventAdapter<T> extends ArrayAdapter<T> {
                 severity.setBackgroundResource(R.color.success);
                 break;
         }
-
-        if (event.getCount() == 1) {
-            vi.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(mContext, EventDetailsActivity.class);
-                    intent.putExtra("eventid", event.getId());
-                    mContext.startActivity(intent);
-                }
-            });
-        } else {
-            //TODO(legion) Add show group
-            vi.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(mContext, EventGroupActivity.class);
-                    intent.putExtra("group", event.getSubject());
-                    mContext.startActivity(intent);
-                }
-            });
-        }
         return vi;
     }
 }
