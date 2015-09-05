@@ -20,10 +20,9 @@ import org.scribe.model.Verb;
 import org.scribe.oauth.OAuthService;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 
-public class EventTaskFragment extends Fragment {
+public class EventFragment extends Fragment {
     private Context mContext;
     private String mOAuthToken;
     private String mOAuthSecret;
@@ -32,20 +31,20 @@ public class EventTaskFragment extends Fragment {
      * Callback interface through which the fragment will report the
      * task's progress and results back to the Activity.
      */
-    interface TaskCallbacks {
+    interface Callbacks {
         void onPreExecute();
         void onProgressUpdate(Event... items);
         void onCancelled();
         void onPostExecute(AsyncTaskResult<JSONObject> result);
     }
 
-    private TaskCallbacks mCallbacks;
+    private Callbacks mCallbacks;
     private EventsTask mTask;
 
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        mCallbacks = (TaskCallbacks) activity;
+        mCallbacks = (Callbacks) activity;
     }
 
     @Override

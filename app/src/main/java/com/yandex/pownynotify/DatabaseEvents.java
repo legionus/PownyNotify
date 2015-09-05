@@ -33,6 +33,16 @@ public class DatabaseEvents {
         return mDatabase.delete("events", null, null);
     }
 
+    public int deleteRecordsByGroup(String group) {
+        String[] args = {group};
+        return mDatabase.delete("events", "subject = ?", args);
+    }
+
+    public int deleteRecordById(String id) {
+        String[] args = {id};
+        return mDatabase.delete("events", "id = ?", args);
+    }
+
     public ArrayList<Event> selectAllRecords() {
         ArrayList<Event> list = new ArrayList<>();
         Cursor mCursor = mDatabase.rawQuery("SELECT * FROM events", null);

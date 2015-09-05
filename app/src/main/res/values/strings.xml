@@ -4,6 +4,13 @@
 
     <string name="action_settings">Settings</string>
 
+    <string name="confirm_deletion_message">Delete selected item ?</string>
+    <string name="confirm_deletion_ok">Confirm</string>
+    <string name="confirm_deletion_cancel">Cancel</string>
+
+    <string name="context_menu_delete">Delete</string>
+    <string name="context_menu_downtime">Downtime</string>
+
     <string-array name="event_actions_menu">
         <item>Downtime</item>
         <item>Delete</item>

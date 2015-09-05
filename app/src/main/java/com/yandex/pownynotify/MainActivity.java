@@ -18,6 +18,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -26,9 +27,8 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
-public class MainActivity extends Activity  implements EventTaskFragment.TaskCallbacks, SwipeRefreshLayout.OnRefreshListener {
+public class MainActivity extends Activity  implements EventFragment.Callbacks, SwipeRefreshLayout.OnRefreshListener, DeleteDialogFragment.Callbacks, DeleteEventFragment.Callbacks {
     private static final String TAG = "MainActivity";
-    private static final String TAG_TASK_FRAGMENT = "powny_fragment";
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
     public static final int OAUTH_REQUEST = 1;
@@ -36,8 +36,11 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
     public SwipeRefreshLayout mSwipeView;
 
     public Context mContext;
-    public ListView mList;
+    public SharedPreferences mPref;
     public EventAdapter<Event> mEvAdapter;
+
+    ArrayList<Event> eventList;
+    int mSelectedItem;
 
     public BroadcastReceiver mEventsBroadcastReceiver;
 
@@ -50,14 +53,17 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
 
         mContext = this;
 
+        mPref = getSharedPreferences("PownyAppPref", MODE_PRIVATE);
+        mSelectedItem = mPref.getInt("MainActivity:ItemSelected", -1);
+
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
         mSwipeView.setRefreshing(false);
         mSwipeView.setOnRefreshListener(this);
 
-        final ArrayList<Event> eventList = new ArrayList<>();
+        eventList = new ArrayList<>();
         mEvAdapter = new EventAdapter(this, R.layout.listview_item, eventList);
 
-        mList = (ListView) findViewById(R.id.topList);
+        ListView mList = (ListView) findViewById(R.id.topList);
         mList.setAdapter(mEvAdapter);
         mList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -202,15 +208,31 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
 
         System.out.println("!!! MainActivity onCreateContextMenu");
 
-        String[] menuItems = getResources().getStringArray(R.array.event_actions_menu);
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
+        menu.add(Menu.NONE, info.position, 0, getResources().getString(R.string.context_menu_delete));
 
-        for (int i = 0; i < menuItems.length; i++) {
-            menu.add(Menu.NONE, i, i, menuItems[i]);
-        }
+        mSelectedItem = info.position;
+        mPref.edit().putInt("MainActivity:ItemSelected", mSelectedItem).apply();
     }
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+        if (item.getTitle().equals(getResources().getString(R.string.context_menu_delete))) {
+            final String DIALOG_FRAGMENT = "DeleteDialogFragment";
+
+            FragmentManager fm = getFragmentManager();
+            DeleteDialogFragment fragment = (DeleteDialogFragment) fm.findFragmentByTag(DIALOG_FRAGMENT);
+
+            FragmentTransaction ft = fm.beginTransaction();
+
+            if (fragment != null) {
+                ft.remove(fragment).commit();
+            }
+
+            fragment = new DeleteDialogFragment();
+            ft.add(fragment, DIALOG_FRAGMENT).commit();
+        }
+
         return true;
     }
 
@@ -219,23 +241,25 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
 
         SharedPreferences mPref = getSharedPreferences("PownyAppPref", MODE_PRIVATE);
 
+        String TASK_FRAGMENT = "EventFragment";
+
         FragmentManager fm = getFragmentManager();
-        EventTaskFragment mTaskFragment = (EventTaskFragment) fm.findFragmentByTag(TAG_TASK_FRAGMENT);
+        EventFragment fragment = (EventFragment) fm.findFragmentByTag(TASK_FRAGMENT);
 
         FragmentTransaction ft = fm.beginTransaction();
 
-        if (mTaskFragment != null) {
-            ft.remove(mTaskFragment);
+        if (fragment != null) {
+            ft.remove(fragment);
         }
 
         Bundle args = new Bundle();
         args.putString("OAuthToken", mPref.getString("OAuthToken", ""));
         args.putString("OAuthSecret", mPref.getString("OAuthSecret", ""));
 
-        mTaskFragment = new EventTaskFragment();
-        mTaskFragment.setArguments(args);
+        fragment = new EventFragment();
+        fragment.setArguments(args);
 
-        ft.add(mTaskFragment, TAG_TASK_FRAGMENT);
+        ft.add(fragment, TASK_FRAGMENT);
         ft.commit();
     }
 
@@ -256,5 +280,52 @@ public class MainActivity extends Activity  implements EventTaskFragment.TaskCal
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void onCancelDelete() {
+        Toast.makeText(this, "Cancel", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onConfirmDelete() {
+        if (mSelectedItem < 0) {
+            return;
+        }
+
+        Event ev = eventList.get(mSelectedItem);
+
+        String DELETE_FRAGMENT = "DeleteEventFragment:" + ev.getSubject();
+
+        FragmentManager fm = getFragmentManager();
+        DeleteEventFragment mFragment = (DeleteEventFragment) fm.findFragmentByTag(DELETE_FRAGMENT);
+
+        if (mFragment == null) {
+            mFragment = new DeleteEventFragment();
+        }
+
+        Bundle args = new Bundle();
+        args.putString("OAuthToken", mPref.getString("OAuthToken", ""));
+        args.putString("OAuthSecret", mPref.getString("OAuthSecret", ""));
+        args.putString("EventSubject", ev.getSubject());
+
+        mFragment.setArguments(args);
+
+        FragmentTransaction ft = fm.beginTransaction();
+        ft.add(mFragment, DELETE_FRAGMENT);
+        ft.commit();
+    }
+
+    @Override
+    public void onPostDeleteEventExecute(AsyncTaskResult<Integer> result) {
+        if (result.getError() != null) {
+            Toast.makeText(this, "Unable to delete event", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        eventList.remove(mSelectedItem);
+        mEvAdapter.notifyDataSetChanged();
+
+        Toast.makeText(this, "Delete: " + mSelectedItem, Toast.LENGTH_SHORT).show();
     }
 }
