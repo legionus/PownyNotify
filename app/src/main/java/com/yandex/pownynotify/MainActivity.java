@@ -3,10 +3,8 @@ package com.yandex.pownynotify;
 import android.app.Activity;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
@@ -42,8 +40,6 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
     ArrayList<Event> eventList;
     int mSelectedItem;
 
-    public BroadcastReceiver mEventsBroadcastReceiver;
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,8 +53,8 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
         mSelectedItem = mPref.getInt("MainActivity:ItemSelected", -1);
 
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
-        mSwipeView.setRefreshing(false);
         mSwipeView.setOnRefreshListener(this);
+        mSwipeView.setRefreshing(false);
 
         eventList = new ArrayList<>();
         mEvAdapter = new EventAdapter(this, R.layout.listview_item, eventList);
@@ -83,16 +79,7 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
         });
 
         registerForContextMenu(mList);
-
-        mEventsBroadcastReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                GetEvents();
-            }
-        };
-        LocalBroadcastManager
-                .getInstance(this)
-                .registerReceiver(mEventsBroadcastReceiver, new IntentFilter("GetEvents"));
+        registerEventReceiver();
 
         if (checkPlayServices()) {
             Intent intent = new Intent(this, RegistrationIntentService.class);
@@ -103,20 +90,15 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
     @Override
     protected void onStart() {
         super.onStart();
-        Intent intent = new Intent("GetEvents");
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-    }
 
-    @Override
-    protected void onPause() {
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mEventsBroadcastReceiver);
-        super.onPause();
+        Context mContext = getApplicationContext();
+        LocalBroadcastManager.getInstance(mContext).sendBroadcast(new Intent("GetEvents"));
     }
 
     @Override
     public void onRefresh() {
-        Intent intent = new Intent("GetEvents");
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        Context mContext = getApplicationContext();
+        LocalBroadcastManager.getInstance(mContext).sendBroadcast(new Intent("GetEvents"));
     }
 
     @Override
@@ -140,17 +122,18 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
 
         return super.onOptionsItemSelected(item);
     }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+/*
         switch (requestCode) {
             case OAUTH_REQUEST:
                 if(resultCode == RESULT_OK) {
-                    Intent intent = new Intent("GetEvents");
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+                    mOAuthToken = mPref.getString("OAuthToken", "");
+                    mOAuthSecret = mPref.getString("OAuthSecret", "");
                 }
                 break;
         }
+*/
     }
 
     @Override
@@ -226,39 +209,32 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
             FragmentTransaction ft = fm.beginTransaction();
 
             if (fragment != null) {
-                ft.remove(fragment).commit();
+                ft.remove(fragment);
             }
 
             fragment = new DeleteDialogFragment();
-            ft.add(fragment, DIALOG_FRAGMENT).commit();
+            ft.add(fragment, DIALOG_FRAGMENT);
+            ft.commit();
         }
 
         return true;
     }
 
-    private void GetEvents() {
-        System.err.println("!!! MainActivity GetEvents");
+    private void registerEventReceiver() {
+        System.err.println("!!! MainActivity RegisterEventReceiver");
 
-        SharedPreferences mPref = getSharedPreferences("PownyAppPref", MODE_PRIVATE);
-
-        String TASK_FRAGMENT = "EventFragment";
+        String TASK_FRAGMENT = "EventReceiver";
 
         FragmentManager fm = getFragmentManager();
         EventFragment fragment = (EventFragment) fm.findFragmentByTag(TASK_FRAGMENT);
 
-        FragmentTransaction ft = fm.beginTransaction();
-
         if (fragment != null) {
-            ft.remove(fragment);
+            System.err.println("!!! MainActivity RegisterEventReceiver already done");
+            return;
         }
-
-        Bundle args = new Bundle();
-        args.putString("OAuthToken", mPref.getString("OAuthToken", ""));
-        args.putString("OAuthSecret", mPref.getString("OAuthSecret", ""));
-
         fragment = new EventFragment();
-        fragment.setArguments(args);
 
+        FragmentTransaction ft = fm.beginTransaction();
         ft.add(fragment, TASK_FRAGMENT);
         ft.commit();
     }
@@ -295,23 +271,23 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
 
         Event ev = eventList.get(mSelectedItem);
 
-        String DELETE_FRAGMENT = "DeleteEventFragment:" + ev.getSubject();
+        String DELETE_FRAGMENT = "DeleteEventFragment";
 
         FragmentManager fm = getFragmentManager();
         DeleteEventFragment mFragment = (DeleteEventFragment) fm.findFragmentByTag(DELETE_FRAGMENT);
 
-        if (mFragment == null) {
-            mFragment = new DeleteEventFragment();
+        FragmentTransaction ft = fm.beginTransaction();
+
+        if (mFragment != null) {
+            ft.remove(mFragment);
         }
 
         Bundle args = new Bundle();
-        args.putString("OAuthToken", mPref.getString("OAuthToken", ""));
-        args.putString("OAuthSecret", mPref.getString("OAuthSecret", ""));
         args.putString("EventSubject", ev.getSubject());
 
+        mFragment = new DeleteEventFragment();
         mFragment.setArguments(args);
 
-        FragmentTransaction ft = fm.beginTransaction();
         ft.add(mFragment, DELETE_FRAGMENT);
         ft.commit();
     }
@@ -325,7 +301,5 @@ public class MainActivity extends Activity  implements EventFragment.Callbacks, 
 
         eventList.remove(mSelectedItem);
         mEvAdapter.notifyDataSetChanged();
-
-        Toast.makeText(this, "Delete: " + mSelectedItem, Toast.LENGTH_SHORT).show();
     }
 }

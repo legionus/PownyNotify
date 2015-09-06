@@ -129,24 +129,23 @@ public class EventGroupActivity extends Activity implements DeleteDialogFragment
 
         Event ev = eventList.get(mSelectedItem);
 
-        String DELETE_FRAGMENT = "DeleteEventFragment:" + ev.getId();
+        String DELETE_FRAGMENT = "DeleteEventFragment";
 
         FragmentManager fm = getFragmentManager();
         DeleteEventFragment mFragment = (DeleteEventFragment) fm.findFragmentByTag(DELETE_FRAGMENT);
 
+        FragmentTransaction ft = fm.beginTransaction();
+
         if (mFragment != null) {
-            return;
+            ft.remove(mFragment);
         }
 
         Bundle args = new Bundle();
-        args.putString("OAuthToken", mPref.getString("OAuthToken", ""));
-        args.putString("OAuthSecret", mPref.getString("OAuthSecret", ""));
         args.putString("EventId", ev.getId());
 
         mFragment = new DeleteEventFragment();
         mFragment.setArguments(args);
 
-        FragmentTransaction ft = fm.beginTransaction();
         ft.add(mFragment, DELETE_FRAGMENT);
         ft.commit();
     }
@@ -165,7 +164,5 @@ public class EventGroupActivity extends Activity implements DeleteDialogFragment
 
         eventList.remove(mSelectedItem);
         mEvAdapter.notifyDataSetChanged();
-
-        Toast.makeText(this, "Delete: " + mSelectedItem, Toast.LENGTH_SHORT).show();
     }
 }

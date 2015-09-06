@@ -2,10 +2,15 @@ package com.yandex.pownynotify;
 
 import android.app.Activity;
 import android.app.Fragment;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.database.sqlite.SQLiteConstraintException;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -27,6 +32,8 @@ public class EventFragment extends Fragment {
     private String mOAuthToken;
     private String mOAuthSecret;
 
+    public BroadcastReceiver mEventsBroadcastReceiver;
+
     /**
      * Callback interface through which the fragment will report the
      * task's progress and results back to the Activity.
@@ -40,43 +47,57 @@ public class EventFragment extends Fragment {
 
     private Callbacks mCallbacks;
     private EventsTask mTask;
-
-    @Override
-    public void onAttach(Activity activity) {
-        super.onAttach(activity);
-        mCallbacks = (Callbacks) activity;
-    }
+    SharedPreferences mPref;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mContext     = getActivity().getApplicationContext();
-        mOAuthToken  = getArguments().getString("OAuthToken", "");
-        mOAuthSecret = getArguments().getString("OAuthSecret", "");
+        System.err.println("!!! EventFragment onCreate");
+
+        Activity activity = getActivity();
+
+        mPref    = activity.getSharedPreferences("PownyAppPref", activity.MODE_PRIVATE);
+        mContext = activity.getApplicationContext();
 
         // Retain this fragment across configuration changes.
         setRetainInstance(true);
 
-        // Create OAuthToken
-        Token token = new Token(mOAuthToken, mOAuthSecret);
+        mEventsBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                System.err.println("!!! EventFragment onReceive");
 
-        // Create and execute the background task.
-        mTask = new EventsTask();
-        mTask.execute(token);
+                mOAuthToken = mPref.getString("OAuthToken", "");
+                mOAuthSecret = mPref.getString("OAuthSecret", "");
+
+                if (mOAuthToken.isEmpty()) {
+                    System.err.println("!!! EventFragment onReceive OAuthToken empty!");
+                    return;
+                }
+
+                mTask = new EventsTask();
+                mTask.execute(new Token(mOAuthToken, mOAuthSecret));
+            }
+        };
+        LocalBroadcastManager.getInstance(mContext).registerReceiver(mEventsBroadcastReceiver, new IntentFilter("GetEvents"));
+    }
+
+    @Override
+    public void onAttach(Activity activity) {
+        System.err.println("!!! EventFragment onAttach");
+
+        super.onAttach(activity);
+        mCallbacks = (Callbacks) activity;
     }
 
     @Override
     public void onDetach() {
+        System.err.println("!!! EventFragment onDetach");
+
         super.onDetach();
         mCallbacks = null;
-    }
-
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putString("OAuthToken", mOAuthToken);
-        outState.putString("OAuthSecret", mOAuthSecret);
+        //LocalBroadcastManager.getInstance(mContext).unregisterReceiver(mEventsBroadcastReceiver);
     }
 
     private class EventsTask extends AsyncTask<Token, Event, AsyncTaskResult<JSONObject>> {

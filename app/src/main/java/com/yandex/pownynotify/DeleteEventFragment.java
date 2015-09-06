@@ -3,6 +3,7 @@ package com.yandex.pownynotify;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import org.scribe.builder.ServiceBuilder;
@@ -36,9 +37,13 @@ public class DeleteEventFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mContext      = getActivity().getApplicationContext();
-        mOAuthToken   = getArguments().getString("OAuthToken", "");
-        mOAuthSecret  = getArguments().getString("OAuthSecret", "");
+        Activity activity = getActivity();
+        SharedPreferences mPref = activity.getSharedPreferences("PownyAppPref", activity.MODE_PRIVATE);
+
+        mOAuthToken = mPref.getString("OAuthToken", "");
+        mOAuthSecret = mPref.getString("OAuthSecret", "");
+
+        mContext      = activity.getApplicationContext();
         mEventId      = getArguments().getString("EventId", "");
         mEventSubject = getArguments().getString("EventSubject", "");
 
@@ -62,8 +67,6 @@ public class DeleteEventFragment extends Fragment {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putString("OAuthToken", mOAuthToken);
-        outState.putString("OAuthSecret", mOAuthSecret);
         outState.putString("EventId", mEventId);
         outState.putString("EventSubject", mEventSubject);
     }
