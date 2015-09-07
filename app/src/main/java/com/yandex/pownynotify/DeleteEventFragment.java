@@ -3,9 +3,12 @@ package com.yandex.pownynotify;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+
 import org.scribe.builder.ServiceBuilder;
 import org.scribe.builder.api.YandexApi;
 import org.scribe.model.OAuthRequest;
@@ -16,8 +19,6 @@ import org.scribe.oauth.OAuthService;
 
 public class DeleteEventFragment extends Fragment {
     private Context mContext;
-    private String mOAuthToken;
-    private String mOAuthSecret;
     private String mEventId;
     private String mEventSubject;
 
@@ -40,8 +41,8 @@ public class DeleteEventFragment extends Fragment {
         Activity activity = getActivity();
         SharedPreferences mPref = activity.getSharedPreferences("PownyAppPref", activity.MODE_PRIVATE);
 
-        mOAuthToken = mPref.getString("OAuthToken", "");
-        mOAuthSecret = mPref.getString("OAuthSecret", "");
+        String mOAuthToken  = mPref.getString("OAuthToken", "");
+        String mOAuthSecret = mPref.getString("OAuthSecret", "");
 
         mContext      = activity.getApplicationContext();
         mEventId      = getArguments().getString("EventId", "");
@@ -114,6 +115,9 @@ public class DeleteEventFragment extends Fragment {
 
                     db.deleteRecordsByGroup(mEventSubject);
                 }
+
+                Context mContext = getActivity().getApplicationContext();
+                LocalBroadcastManager.getInstance(mContext).sendBroadcast(new Intent("EventsView"));
 
             } catch (Exception e) {
                 return new AsyncTaskResult<>(e);

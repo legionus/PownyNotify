@@ -24,36 +24,27 @@ import org.scribe.model.Token;
 import org.scribe.model.Verb;
 import org.scribe.oauth.OAuthService;
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
+public class EventDownloadFragment extends Fragment {
+    interface Callbacks {
+        void onEventDownloadPreExecute();
+        void onEventDownloadPostExecute(AsyncTaskResult<JSONObject> result);
+    }
 
-public class EventFragment extends Fragment {
+    private Callbacks mCallbacks;
+    private EventsDownload mTask;
+    private SharedPreferences mPref;
+
     private Context mContext;
     private String mOAuthToken;
     private String mOAuthSecret;
 
     public BroadcastReceiver mEventsBroadcastReceiver;
 
-    /**
-     * Callback interface through which the fragment will report the
-     * task's progress and results back to the Activity.
-     */
-    interface Callbacks {
-        void onPreExecute();
-        void onProgressUpdate(Event... items);
-        void onCancelled();
-        void onPostExecute(AsyncTaskResult<JSONObject> result);
-    }
-
-    private Callbacks mCallbacks;
-    private EventsTask mTask;
-    SharedPreferences mPref;
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        System.err.println("!!! EventFragment onCreate");
+        System.err.println("!!! EventDownloadFragment onCreate");
 
         Activity activity = getActivity();
 
@@ -66,26 +57,26 @@ public class EventFragment extends Fragment {
         mEventsBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                System.err.println("!!! EventFragment onReceive");
+                System.err.println("!!! EventDownloadFragment onReceive");
 
                 mOAuthToken = mPref.getString("OAuthToken", "");
                 mOAuthSecret = mPref.getString("OAuthSecret", "");
 
                 if (mOAuthToken.isEmpty()) {
-                    System.err.println("!!! EventFragment onReceive OAuthToken empty!");
+                    System.err.println("!!! EventDownloadFragment onReceive OAuthToken empty!");
                     return;
                 }
 
-                mTask = new EventsTask();
+                mTask = new EventsDownload();
                 mTask.execute(new Token(mOAuthToken, mOAuthSecret));
             }
         };
-        LocalBroadcastManager.getInstance(mContext).registerReceiver(mEventsBroadcastReceiver, new IntentFilter("GetEvents"));
+        LocalBroadcastManager.getInstance(mContext).registerReceiver(mEventsBroadcastReceiver, new IntentFilter("EventsDownload"));
     }
 
     @Override
     public void onAttach(Activity activity) {
-        System.err.println("!!! EventFragment onAttach");
+        System.err.println("!!! EventDownloadFragment onAttach");
 
         super.onAttach(activity);
         mCallbacks = (Callbacks) activity;
@@ -93,15 +84,14 @@ public class EventFragment extends Fragment {
 
     @Override
     public void onDetach() {
-        System.err.println("!!! EventFragment onDetach");
+        System.err.println("!!! EventDownloadFragment onDetach");
 
         super.onDetach();
         mCallbacks = null;
-        //LocalBroadcastManager.getInstance(mContext).unregisterReceiver(mEventsBroadcastReceiver);
     }
 
-    private class EventsTask extends AsyncTask<Token, Event, AsyncTaskResult<JSONObject>> {
-        private static final String TAG = "EventTask";
+    private class EventsDownload extends AsyncTask<Token, Void, AsyncTaskResult<JSONObject>> {
+        private static final String TAG = "EventsDownload";
 
         @Override
         protected AsyncTaskResult<JSONObject> doInBackground(Token... tokens) {
@@ -119,7 +109,7 @@ public class EventFragment extends Fragment {
                 service.signRequest(tokens[0], request);
                 response = request.send();
 
-                System.err.println("!!! EventsTask " + response.getCode());
+                System.err.println("!!! EventsDownload " + response.getCode());
 
                 if (response.getCode() == 401) {
                     return new AsyncTaskResult<>(new Exception("Unauthorized"));
@@ -142,17 +132,16 @@ public class EventFragment extends Fragment {
                     throw new Exception("Bad status: " + ServerData.getString("message"));
                 }
                 Messages = ServerData.getJSONArray("messages");
-                System.err.println("!!! EventsTask Got " + Messages.length() + " messages");
+                System.err.println("!!! EventsDownload Got " + Messages.length() + " messages");
 
             } catch (Exception e) {
                 return new AsyncTaskResult<>(e);
             }
 
             DatabaseEvents db = new DatabaseEvents(mContext);
-            int n = db.deleteRecords();
-            System.err.println("!!! EventsTask removed from DB " + n + " messages");
 
-            LinkedHashMap<String, Event> groups = new LinkedHashMap<>();
+            int n = db.deleteRecords();
+            System.err.println("!!! EventsDownload removed from DB " + n + " messages");
 
             for (int i = 0; !isCancelled() && i < Messages.length(); i++) {
                 Event ev = new Event();
@@ -174,20 +163,7 @@ public class EventFragment extends Fragment {
                     db.createRecord(ev);
                 } catch (SQLiteConstraintException e) {
                     Log.e(TAG, "Unable to add record: " + ev.getId());
-                    continue;
                 }
-
-                if (groups.containsKey(ev.getSubject())) {
-                    groups.get(ev.getSubject()).incCount();
-                    continue;
-                }
-                groups.put(ev.getSubject(), ev);
-            }
-
-            Collection c = groups.values();
-            for (Object aC : c) {
-                Event ev = (Event) aC;
-                publishProgress(ev);
             }
 
             return new AsyncTaskResult<>(ServerData);
@@ -196,28 +172,14 @@ public class EventFragment extends Fragment {
         @Override
         protected void onPreExecute() {
             if (mCallbacks != null) {
-                mCallbacks.onPreExecute();
-            }
-        }
-
-        @Override
-        protected void onProgressUpdate(Event... items) {
-            if (mCallbacks != null) {
-                mCallbacks.onProgressUpdate(items);
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            if (mCallbacks != null) {
-                mCallbacks.onCancelled();
+                mCallbacks.onEventDownloadPreExecute();
             }
         }
 
         @Override
         protected void onPostExecute(AsyncTaskResult<JSONObject> result) {
             if (mCallbacks != null) {
-                mCallbacks.onPostExecute(result);
+                mCallbacks.onEventDownloadPostExecute(result);
             }
         }
     }
