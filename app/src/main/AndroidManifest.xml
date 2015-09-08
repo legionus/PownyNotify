@@ -89,5 +89,9 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name="com.yandex.pownynotify.RegistrationIntentService"
+            android:exported="false">
+        </service>
     </application>
 </manifest>
