@@ -5,7 +5,7 @@ import android.content.Intent;
 import com.google.android.gms.iid.InstanceIDListenerService;
 
 public class PownyInstanceIDListenerService extends InstanceIDListenerService {
-    private static final String TAG = "GmsInstanceIDLS";
+    private static final String TAG = "PownyInstanceIDListenerService";
 
     /**
      * Called if InstanceID token is updated. This may occur if the security of

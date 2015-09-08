@@ -84,6 +84,7 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
         registerEventDownloadReceiver();
 
         if (checkPlayServices()) {
+            System.err.println("!!! MainActivity RegistrationIntentService");
             Intent intent = new Intent(this, RegistrationIntentService.class);
             startService(intent);
         }

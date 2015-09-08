@@ -48,6 +48,7 @@ public class RegistrationIntentService extends IntentService {
             InstanceID instanceID = InstanceID.getInstance(this);
             String token = instanceID.getToken(GcmParams.SENDER_ID, GoogleCloudMessaging.INSTANCE_ID_SCOPE, null);
 
+            System.err.println("!!! RegistrationIntentService GCM Registration Token: " + token);
             Log.i(TAG, "GCM Registration Token: " + token);
 
             // TODO: Implement this method to send any registration to your app's servers.
@@ -62,6 +63,7 @@ public class RegistrationIntentService extends IntentService {
             sharedPreferences.edit().putBoolean(GcmParams.SENT_TOKEN_TO_SERVER, true).apply();
 
         } catch (Exception e) {
+            System.err.println("!!! RegistrationIntentService Failed to complete token refresh: " + e);
             Log.d(TAG, "Failed to complete token refresh", e);
             // If an exception happens while fetching the new token or updating our registration data
             // on a third-party server, this ensures that we'll attempt the update at a later time.
