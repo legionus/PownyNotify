@@ -35,7 +35,6 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
     public SharedPreferences mPref;
     public EventAdapter<Event> mEvAdapter;
 
-    ArrayList<Event> eventList;
     int mSelectedItem;
 
     @Override
@@ -43,12 +42,12 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        System.err.println("!!! MainActivity onCreate");
+        System.err.println("!!! " + TAG + " onCreate");
 
         mContext = this;
 
         mPref = getSharedPreferences("PownyAppPref", MODE_PRIVATE);
-        mSelectedItem = mPref.getInt("MainActivity:ItemSelected", -1);
+        mSelectedItem = mPref.getInt(TAG + ":ItemSelected", -1);
 
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
         mSwipeView.setOnRefreshListener(this);
@@ -56,7 +55,7 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
         mSwipeView.setVisibility(View.VISIBLE);
         mSwipeView.setRefreshing(true);
 
-        eventList = new ArrayList<>();
+        ArrayList<Event> eventList = new ArrayList<>();
         mEvAdapter = new EventAdapter(this, R.layout.listview_item, eventList);
 
         ListView mList = (ListView) findViewById(R.id.topList);
@@ -64,7 +63,7 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
         mList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                final Event event = eventList.get(position);
+                Event event = mEvAdapter.getItem(position);
 
                 if (event.getCount() == 1) {
                     Intent intent = new Intent(mContext, EventDetailsActivity.class);
@@ -84,48 +83,32 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
         registerEventDownloadReceiver();
 
         if (checkPlayServices()) {
-            System.err.println("!!! MainActivity RegistrationIntentService");
             Intent intent = new Intent(this, RegistrationIntentService.class);
             startService(intent);
         }
     }
 
     private void registerEventDownloadReceiver() {
-        System.err.println("!!! MainActivity Register EventDownloadReceiver");
+        String TAG_FUNC = "EventDownloadReceiver";
 
-        String TASK_FRAGMENT = "EventDownloadReceiver";
+        System.err.println("!!! " + TAG + " Register " + TAG_FUNC);
 
         FragmentManager fm = getFragmentManager();
-        EventDownloadFragment fragment = (EventDownloadFragment) fm.findFragmentByTag(TASK_FRAGMENT);
-
-        if (fragment != null) {
-            return;
+        if (fm.findFragmentByTag(TAG_FUNC) == null) {
+            fm.beginTransaction().add(new EventDownloadFragment(), TAG_FUNC).commit();
         }
-        fragment = new EventDownloadFragment();
-
-        FragmentTransaction ft = fm.beginTransaction();
-        ft.add(fragment, TASK_FRAGMENT);
-        ft.commit();
     }
 
     private void registerEventViewReceiver() {
-        System.err.println("!!! MainActivity Register EventGetReceiver");
+        String TAG_FUNC = "EventViewReceiver";
 
-        String TASK_FRAGMENT = "EventViewReceiver";
+        System.err.println("!!! " + TAG + " Register " + TAG_FUNC);
 
         FragmentManager fm = getFragmentManager();
-        EventViewFragment fragment = (EventViewFragment) fm.findFragmentByTag(TASK_FRAGMENT);
-
-        if (fragment != null) {
-            return;
+        if (fm.findFragmentByTag(TAG_FUNC) == null) {
+            fm.beginTransaction().add(new EventViewFragment(), TAG_FUNC).commit();
         }
-        fragment = new EventViewFragment();
-
-        FragmentTransaction ft = fm.beginTransaction();
-        ft.add(fragment, TASK_FRAGMENT);
-        ft.commit();
     }
-
 
     @Override
     protected void onStart() {
@@ -167,13 +150,10 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
 
         return super.onOptionsItemSelected(item);
     }
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-    }
 
     @Override
     public void onEventDownloadPreExecute() {
-        System.err.println("!!! MainActivity onPreExecute");
+        System.err.println("!!! " + TAG + " onPreExecute");
 
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
         if (mSwipeView == null) {
@@ -185,7 +165,7 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
 
     @Override
     public void onEventDownloadPostExecute( AsyncTaskResult<JSONObject> result) {
-        System.err.println("!!! MainActivity onEventDownloadPostExecute");
+        System.err.println("!!! " + TAG + " onEventDownloadPostExecute");
 
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
         if (mSwipeView == null) {
@@ -195,7 +175,7 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
 
         if (result.getError() != null) {
             Intent intent = new Intent(this, OAuthActivity.class);
-            startActivityForResult(intent, 0);
+            startActivity(intent);
             return;
         }
 
@@ -207,13 +187,13 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
 
-        System.out.println("!!! MainActivity onCreateContextMenu");
+        System.out.println("!!! " + TAG + " onCreateContextMenu");
 
         AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
         menu.add(Menu.NONE, info.position, 0, getResources().getString(R.string.context_menu_delete));
 
         mSelectedItem = info.position;
-        mPref.edit().putInt("MainActivity:ItemSelected", mSelectedItem).apply();
+        mPref.edit().putInt(TAG + ":ItemSelected", mSelectedItem).apply();
     }
 
     @Override
@@ -268,7 +248,10 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
             return;
         }
 
-        Event ev = eventList.get(mSelectedItem);
+        System.err.println("!!! " + TAG + " onConfirmDelete item=" + mSelectedItem);
+
+        //Event ev = eventList.get(mSelectedItem);
+        Event ev = mEvAdapter.getItem(mSelectedItem);
 
         String DELETE_FRAGMENT = "DeleteEventFragment";
 
@@ -295,16 +278,12 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
     public void onPostDeleteEventExecute(AsyncTaskResult<Integer> result) {
         if (result.getError() != null) {
             Toast.makeText(this, "Unable to delete event", Toast.LENGTH_SHORT).show();
-            return;
         }
-
-        eventList.remove(mSelectedItem);
-        mEvAdapter.notifyDataSetChanged();
     }
 
     @Override
     public void onEventViewPreExecute() {
-        System.err.println("!!! MainActivity onEventViewPreExecute");
+        System.err.println("!!! " + TAG + " onEventViewPreExecute");
 
         mSwipeView = (SwipeRefreshLayout) findViewById(R.id.swipe);
         if (mSwipeView == null) {
@@ -323,7 +302,7 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
 
     @Override
     public void onEventViewCancelled() {
-        System.err.println("!!! MainActivity onEventViewCancelled");
+        System.err.println("!!! " + TAG + " onEventViewCancelled");
 
         mSwipeView.setRefreshing(false);
         mEvAdapter.notifyDataSetChanged();
@@ -331,7 +310,7 @@ public class MainActivity extends Activity  implements EventViewFragment.Callbac
 
     @Override
     public void onEventViewPostExecute() {
-        System.err.println("!!! MainActivity onEventViewPostExecute");
+        System.err.println("!!! " + TAG + " onEventViewPostExecute");
 
         mSwipeView.setRefreshing(false);
         mEvAdapter.notifyDataSetChanged();

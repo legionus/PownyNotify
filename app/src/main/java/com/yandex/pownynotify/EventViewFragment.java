@@ -11,8 +11,11 @@ import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class EventViewFragment extends Fragment {
     interface Callbacks {
@@ -25,7 +28,15 @@ public class EventViewFragment extends Fragment {
     private Callbacks mCallbacks;
     private EventsView mTask;
     private Context mContext;
-    private BroadcastReceiver mEventsBroadcastReceiver;
+
+    private final Map<String, Integer> numSeverity = new HashMap<>();
+
+    public EventViewFragment() {
+        numSeverity.put("CRIT", 0);
+        numSeverity.put("WARN", 1);
+        numSeverity.put("INFO", 2);
+        numSeverity.put("OK",   3);
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -38,7 +49,7 @@ public class EventViewFragment extends Fragment {
 
         setRetainInstance(true);
 
-        mEventsBroadcastReceiver = new BroadcastReceiver() {
+        BroadcastReceiver mEventsBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 System.err.println("!!! EventViewFragment onReceive");
@@ -84,9 +95,19 @@ public class EventViewFragment extends Fragment {
                 groups.put(ev.getSubject(), ev);
             }
 
-            Collection c = groups.values();
-            for (Object aC : c) {
-                Event ev = (Event) aC;
+            ArrayList<Event> l = new ArrayList<>(groups.values());
+            Collections.sort(l, new Comparator<Event>() {
+                @Override
+                public int compare(Event lhs, Event rhs) {
+                    int severity = numSeverity.get(lhs.getSeverity()).compareTo(numSeverity.get(rhs.getSeverity()));
+                    if (severity == 0) {
+                        return lhs.getSubject().compareTo(rhs.getSubject());
+                    }
+                    return severity;
+                }
+            });
+
+            for (Event ev : l) {
                 publishProgress(ev);
             }
 
